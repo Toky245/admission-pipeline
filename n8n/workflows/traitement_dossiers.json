@@ -52,11 +52,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -512,
-        -1312
+        -528,
+        -1248
       ],
       "id": "973bebc1-d498-4e85-8f2c-80008c088e23",
-      "name": "Ouvrir exécution"
+      "name": "Ouvrir exécution",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -76,11 +79,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -304,
-        -800
+        -128,
+        -1488
       ],
       "id": "0bb8646f-ea39-450e-abe5-2221aa3307a7",
-      "name": "1 - Réception"
+      "name": "1 - Réception",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -114,11 +120,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -80,
-        -800
+        224,
+        -1552
       ],
       "id": "02334158-818d-4ed0-a105-1a6a7ab54b0d",
-      "name": "2 - Extraction"
+      "name": "2 - Extraction",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -138,11 +147,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        144,
-        -800
+        576,
+        -1584
       ],
       "id": "5e608fb0-c9c4-4e4e-a2ba-0b7936a35643",
-      "name": "3 - Contrôle"
+      "name": "3 - Contrôle",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -162,11 +174,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        368,
-        -800
+        928,
+        -1568
       ],
       "id": "b5ca1048-cf86-4108-8d7d-2c25e91eba2b",
-      "name": "4 - Enregistrement"
+      "name": "4 - Enregistrement",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -186,11 +201,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        592,
-        -800
+        1360,
+        -1488
       ],
       "id": "ad6f5918-3894-43d4-a3dc-e2b82bea3391",
-      "name": "5 - Matricule"
+      "name": "5 - Matricule",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -210,11 +228,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        816,
-        -800
+        880,
+        -1152
       ],
       "id": "deee0879-5e41-45bf-b4ba-f508bb18c671",
-      "name": "6 - Accusé"
+      "name": "6 - Accusé",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -234,11 +255,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1040,
-        -800
+        1376,
+        -1152
       ],
       "id": "1bf459b6-7c45-488d-9ba6-852ac54316d9",
-      "name": "7 - Notification"
+      "name": "7 - Notification",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -258,11 +282,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1264,
-        -800
+        880,
+        -592
       ],
       "id": "31062e8d-9cf1-461b-8363-40666e1577f2",
-      "name": "8 - Archivage"
+      "name": "8 - Archivage",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -282,11 +309,13 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -272,
-        -480
+        1328,
+        -608
       ],
       "id": "94bc114a-cdd3-4483-a033-9246c7bf3cb7",
-      "name": "Clore (réussie)"
+      "name": "Clore (réussie)",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -295,11 +324,52 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -752,
-        -1024
+        -720,
+        -960
       ],
       "id": "96171d91-b4cd-40a4-8d51-d10144ee47f3",
       "name": "Chaque dossier"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=     http://extracteur:8000/executions/{{ $('Ouvrir exécution').item.json.execution_id }}/terminer",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "statut",
+              "value": "echouee"
+            },
+            {
+              "name": "erreur",
+              "value": "={{ $prevNode.name }} : {{ JSON.stringify($json).slice(0, 400) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        -912
+      ],
+      "id": "30af990d-80b5-4f40-8b11-b8cbb37da1e1",
+      "name": "Clore (échec)",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -912
+      ],
+      "id": "374400fd-7cc3-4553-a5ad-906c55ac37ee",
+      "name": "Dossier non ouvert"
     }
   ],
   "pinData": {},
@@ -334,6 +404,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Dossier non ouvert",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -356,6 +433,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -364,6 +448,13 @@
         [
           {
             "node": "3 - Contrôle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
             "type": "main",
             "index": 0
           }
@@ -378,6 +469,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -386,6 +484,13 @@
         [
           {
             "node": "5 - Matricule",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
             "type": "main",
             "index": 0
           }
@@ -400,6 +505,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -408,6 +520,13 @@
         [
           {
             "node": "7 - Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
             "type": "main",
             "index": 0
           }
@@ -422,6 +541,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -430,6 +556,13 @@
         [
           {
             "node": "Clore (réussie)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clore (échec)",
             "type": "main",
             "index": 0
           }
@@ -469,6 +602,17 @@
           }
         ]
       ]
+    },
+    "Clore (échec)": {
+      "main": [
+        [
+          {
+            "node": "Dossier non ouvert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -476,7 +620,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "8543152e-b4b5-405b-b3c1-a5fa33acc2a4",
+  "versionId": "ceb1e09c-e55c-4887-9e47-b9136d901607",
   "meta": {
     "instanceId": "27f437226535325a0bf3453c109fc3f1e83ceaf24c288bf49fc4787f3aa6937b"
   },
