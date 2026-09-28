@@ -1,7 +1,14 @@
-.PHONY: aide demarrer demarrer-tout arreter etat journaux psql doublons tester reinitialiser
+# Ports lus dans .env s'il existe
+-include .env
+EXTRACTEUR_PORT ?= 8000
+MAILPIT_UI_PORT ?= 8025
+N ?= 30
+
+.PHONY: aide demarrer demarrer-tout arreter etat journaux psql doublons tester migrer \
+        generer simuler verifier reinitialiser
 
 aide:            ## Affiche cette aide
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+	@grep -hE '^[a-z-]+:.*##' Makefile | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
 .env:
 	cp .env.example .env
@@ -32,6 +39,23 @@ tester:          ## Lance les tests du schéma (idempotence, reprise, concurrenc
 	docker compose exec -T postgres sh -c 'psql -q -U $$POSTGRES_USER -d $$POSTGRES_DB' < db/tests/test_schema.sql
 	docker compose exec -T postgres sh -c 'PGUSER=$$POSTGRES_USER PGDATABASE=$$POSTGRES_DB sh -s' < db/tests/test_concurrence.sh
 
-reinitialiser:   ## ATTENTION : supprime toutes les données et relance à vide
+migrer:          ## Applique les migrations SQL (rejouables sans risque)
+	@for f in db/migrations/*.sql; do \
+	  echo "Migration : $$f"; \
+	  docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -q -U $$POSTGRES_USER -d $$POSTGRES_DB' < $$f || exit 1; \
+	done
+
+generer:         ## Génère N faux dossiers (ex. make generer N=100)
+	python3 scripts/generer_dossiers.py -n $(N)
+
+simuler:         ## Traite les dépôts SANS n8n (référence pour le flux n8n)
+	python3 scripts/simuler_flux.py --url http://localhost:$(EXTRACTEUR_PORT)
+
+verifier:        ## Compare les décisions avec les résultats attendus
+	python3 scripts/verifier_resultats.py --url http://localhost:$(EXTRACTEUR_PORT) \
+	  --mailpit http://localhost:$(MAILPIT_UI_PORT)
+
+reinitialiser:   ## ATTENTION : efface base, dossiers traités et e-mails, puis relance
 	docker compose --profile tableau down -v
+	find data -mindepth 2 ! -name .gitkeep -delete 2>/dev/null; rm -f data/verite_terrain.csv
 	$(MAKE) demarrer

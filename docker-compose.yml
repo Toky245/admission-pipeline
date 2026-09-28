@@ -13,6 +13,7 @@ x-journalisation: &journalisation
 
 services:
   postgres:
+    # Toute image PostgreSQL 16 officielle ou dérivée convient (ex. postgis/postgis:16-3.4)
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     container_name: ap-postgres
     restart: unless-stopped
@@ -27,6 +28,7 @@ services:
     volumes:
       - pg_donnees:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/migrations:/migrations:ro
     ports:
       - "127.0.0.1:${POSTGRES_PORT}:5432"
     healthcheck:
@@ -80,6 +82,8 @@ services:
   extracteur:
     build:
       context: ./services/extracteur
+      # Construction avec le réseau de l'hôte : évite les échecs de pip
+      # quand le réseau interne de Docker n'a pas d'accès sortant.
       network: host
     image: admission-pipeline/extracteur:local
     container_name: ap-extracteur
@@ -87,9 +91,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       DOSSIER_DONNEES: /data
+      ANNEE_UNIVERSITAIRE: ${ANNEE_UNIVERSITAIRE:-2026-2027}
+      DROITS_INSCRIPTION_AR: ${DROITS_INSCRIPTION_AR:-150000}
+      SMTP_HOTE: mailpit
+      SMTP_PORT: 1025
       TZ: ${TZ}
     volumes:
       - ./data:/data

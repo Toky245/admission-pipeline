@@ -5,6 +5,9 @@
 data/entree/*
 data/archives/*
 data/rejets/*
+data/en_attente/*
+data/accuses/*
+data/*.csv
 !data/**/.gitkeep
 
 # Python

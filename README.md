@@ -28,7 +28,7 @@ doublon ni ne passe inaperçue.
 |----------------------|---------------------------------------------|
 | n8n (auto-hébergé)   | Orchestration des flux                      |
 | PostgreSQL 16        | Données métier, état d'avancement, journal  |
-| Python / FastAPI     | Extraction des pièces                       |
+| Python / FastAPI     | Exécution des étapes (extraction, contrôle…) |
 | Mailpit              | Serveur SMTP de test                        |
 | Grafana (optionnel)  | Tableau de bord de suivi                    |
 | Docker Compose       | Déploiement reproductible                   |
@@ -54,6 +54,45 @@ make tester                 # vérifie idempotence, reprise et concurrence
 
 `make aide` liste toutes les commandes.
 
+## Essayer la chaîne
+
+```bash
+make generer N=50     # 50 faux dossiers dans data/entree/, dont ~35 % avec une erreur
+make simuler          # traitement sans n8n, par appels directs au service
+make verifier         # compare chaque décision au résultat attendu
+```
+
+Exemple de sortie de `make verifier` :
+
+```
+Dossiers attendus : 100   traités : 100
+Décisions : complet 71, rejete 9, incomplet 20
+Décisions conformes : 100 / 100
+Doublons en base : 0
+E-mails reçus : 250   envoyés en double : 0
+RÉSULTAT : conforme
+```
+
+Les erreurs volontaires du générateur : pièce manquante, photo tronquée,
+PDF corrompu, montant du reçu insuffisant, identité incohérente entre les
+pièces, reçu réutilisé par un autre candidat, candidat qui redépose un
+second dossier, et variations d'écriture (casse, accents, espaces) qui ne
+doivent **pas** provoquer de rejet.
+
+## API du service
+
+| Méthode | Route                                    | Rôle                                   |
+|---------|------------------------------------------|----------------------------------------|
+| GET     | `/depots`                                | Dépôts nouveaux et dossiers à reprendre |
+| POST    | `/executions`                            | Ouvre une exécution (verrou par dossier) |
+| POST    | `/dossiers/{reference}/etapes/{etape}`   | Exécute une étape                       |
+| POST    | `/executions/{id}/terminer`              | Clôt l'exécution                        |
+| GET     | `/bilan`                                 | État des dossiers et doublons           |
+
+Codes de retour : `200` succès (étape faite, sautée ou ignorée), `404`
+inconnu, `409` refusé dans l'état actuel (ne pas relancer), `503` panne
+technique (à relancer). Documentation interactive : `/docs`.
+
 ## Structure du dépôt
 
 ```
@@ -64,15 +103,17 @@ services/
   extracteur/  service Python d'extraction des pièces
 n8n/workflows/ flux n8n exportés en JSON
 grafana/       configuration du tableau de bord
-scripts/       générateur de faux dossiers, campagne de pannes
-data/          dossiers d'entrée, archives, rejets (non versionnés)
+scripts/       générateur, simulateur de flux, vérification des résultats
+db/migrations/ évolutions du schéma, rejouables (make migrer)
+data/          entree, archives, en_attente, rejets, accuses (non versionnés)
 docs/          architecture et décisions techniques
 ```
 
 ## Avancement
 
 - [x] Phase 1 : socle Docker, schéma de base, tests d'idempotence
-- [ ] Phase 2 : générateur de faux dossiers et flux nominal
+- [x] Phase 2 : générateur de faux dossiers, 8 étapes idempotentes, simulateur
+- [ ] Phase 2 bis : flux n8n équivalent au simulateur
 - [ ] Phase 3 : idempotence et reprise branchées dans n8n
 - [ ] Phase 4 : relances, flux d'erreur, alertes
 - [ ] Phase 5 : tableau de bord Grafana

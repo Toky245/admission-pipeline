@@ -10,6 +10,11 @@ WORKDIR /service
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Dépendances ajoutées après coup : couche séparée (l'installation de base
+# reste en cache) et cache pip persistant entre les constructions.
+COPY requirements-extraction.txt .
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements-extraction.txt
+
 COPY app ./app
 
 # Utilisateur non privilégié
