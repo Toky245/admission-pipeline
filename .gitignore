@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Données de travail (les faux dossiers se régénèrent avec le script)
+data/entree/*
+data/archives/*
+data/rejets/*
+!data/**/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Résultats de campagnes de pannes (on ne versionne que les rapports finaux)
+scripts/resultats/*.csv
+
+# Éditeurs / système
+.vscode/
+.idea/
+.DS_Store

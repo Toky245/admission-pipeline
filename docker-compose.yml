@@ -1,0 +1,152 @@
+name: admission-pipeline
+
+# Chaîne d'automatisation du traitement des dossiers d'inscription.
+# Démarrage : cp .env.example .env && docker compose up -d
+# Avec le tableau de bord : docker compose --profile tableau up -d
+
+x-journalisation: &journalisation
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: ap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      N8N_DB: ${N8N_DB}
+      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+      TZ: ${TZ}
+    volumes:
+      - pg_donnees:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [reseau_interne]
+    <<: *journalisation
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    container_name: ap-n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      extracteur:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_SECURE_COOKIE: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RESTRICT_FILE_ACCESS_TO: /data
+      GENERIC_TIMEZONE: ${TZ}
+      TZ: ${TZ}
+      # Conserver l'historique des exécutions : il sert à la campagne de pannes
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 336
+    volumes:
+      - n8n_donnees:/home/node/.n8n
+      - ./data:/data
+      - ./n8n/workflows:/workflows
+    ports:
+      - "127.0.0.1:${N8N_PORT}:5678"
+    networks: [reseau_interne]
+    <<: *journalisation
+
+  extracteur:
+    build:
+      context: ./services/extracteur
+      network: host
+    image: admission-pipeline/extracteur:local
+    container_name: ap-extracteur
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DOSSIER_DONNEES: /data
+      TZ: ${TZ}
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:${EXTRACTEUR_PORT}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/sante', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [reseau_interne]
+    <<: *journalisation
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ap-mailpit
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 5000
+      TZ: ${TZ}
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT}:8025"
+    networks: [reseau_interne]
+    <<: *journalisation
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: ap-grafana
+    restart: unless-stopped
+    profiles: [tableau]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      POSTGRES_DB: ${POSTGRES_DB}
+      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+      TZ: ${TZ}
+    volumes:
+      - grafana_donnees:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT}:3000"
+    networks: [reseau_interne]
+    <<: *journalisation
+
+volumes:
+  pg_donnees:
+  n8n_donnees:
+  grafana_donnees:
+
+networks:
+  # Réseau nommé : la campagne de pannes le coupe volontairement
+  # (docker network disconnect) pour simuler une panne réseau.
+  reseau_interne:
+    name: ap-reseau
