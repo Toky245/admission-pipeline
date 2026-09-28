@@ -125,7 +125,37 @@ def bilan() -> dict:
     """État de tous les dossiers et contrôle des doublons (pour les vérifications)."""
     with connexion() as conn:
         dossiers = conn.execute(
-            """SELECT reference, statut, matricule, motif, parcours_code
-                 FROM inscription.dossiers ORDER BY reference""").fetchall()
+            """SELECT d.reference, d.statut, d.matricule, d.motif, d.parcours_code,
+                      d.recu_le, e.fin AS termine_le
+                 FROM inscription.dossiers d
+                 LEFT JOIN pilotage.etapes_dossier e
+                        ON e.dossier_id = d.id AND e.etape = 'archivage'
+                       AND e.statut IN ('terminee', 'ignoree')
+                ORDER BY d.reference""").fetchall()
         doublons = conn.execute("SELECT * FROM pilotage.v_controle_doublons").fetchall()
     return {"dossiers": dossiers, "doublons": doublons}
+
+
+@app.get("/metriques")
+def metriques() -> dict:
+    """Compteurs instantanés, interrogés en continu pendant la campagne de pannes."""
+    with connexion() as conn:
+        ligne = conn.execute(
+            """SELECT
+                 (SELECT count(*) FROM inscription.dossiers)                        AS dossiers,
+                 (SELECT count(*) FROM pilotage.v_dossiers_termines)                AS termines,
+                 (SELECT count(*) FROM pilotage.executions WHERE statut = 'en_cours')    AS exec_en_cours,
+                 (SELECT count(*) FROM pilotage.executions WHERE statut = 'reussie')     AS exec_reussies,
+                 (SELECT count(*) FROM pilotage.executions WHERE statut = 'echouee')     AS exec_echouees,
+                 (SELECT count(*) FROM pilotage.executions WHERE statut = 'interrompue') AS exec_interrompues,
+                 (SELECT count(*) FROM pilotage.etapes_dossier WHERE tentatives > 1)     AS etapes_reprises,
+                 (SELECT count(*) FROM pilotage.journal WHERE niveau = 'erreur')         AS echecs_etapes,
+                 (SELECT count(*) FROM pilotage.v_controle_doublons)                AS doublons,
+                 now() AS horodatage""").fetchone()
+        par_etape = conn.execute(
+            """SELECT etape, reprises, tentatives_max, duree_moyenne_ms
+                 FROM pilotage.v_etapes_stats ORDER BY ordre""").fetchall()
+    en_attente_depot = sum(1 for d in CONFIG.entree.iterdir()
+                           if d.is_dir() and (d / ".pret").exists()) if CONFIG.entree.is_dir() else 0
+    return {**ligne, "depots_en_entree": en_attente_depot,
+            "duree_verrou_minutes": CONFIG.duree_verrou_minutes, "etapes": par_etape}

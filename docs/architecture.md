@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-    D[/"data/entree<br/>dépôts des candidats"/] --> N8N
+    D[/"data/entree<br/>dépôts des candidats"/] --> EXT
 
     subgraph Pile Docker
         N8N["n8n<br/>orchestration"]
@@ -80,7 +80,34 @@ du même candidat) sont arbitrées par la base à l'enregistrement : la
 contrainte d'unicité du reçu et le verrou sur la ligne du candidat
 garantissent qu'un seul dossier devient complet.
 
-## Tests réalisés (phase 2)
+## Le flux n8n
+
+```
+Chaque minute ─┐
+Manuel ────────┴→ Lister les dépôts → Un item par dépôt → Chaque dossier (boucle)
+                                                            │
+       ┌────────────────────────────────────────────────────┘
+       ▼
+  Ouvrir exécution ──erreur──→ Dossier non ouvert (fin, repris au passage suivant)
+       │
+       ▼
+  1 Réception → 2 Extraction → … → 8 Archivage → Clore (réussie) ──→ boucle
+       │ (erreur après 3 essais, sur n'importe quelle étape)
+       ▼
+  Clore (échec) : enregistre l'étape et l'erreur ──→ boucle
+```
+
+- **Relances** : chaque nœud HTTP réessaie 3 fois, à 5 s d'intervalle.
+- **Isolation** : une étape en échec clôt l'exécution de *ce* dossier en
+  échec, puis la boucle passe au suivant ; le dossier sera repris au passage
+  suivant, à partir de l'étape en échec.
+- **Pas de boucle infinie** : un item d'erreur n'est jamais renvoyé dans la
+  boucle (leçon apprise : un message d'erreur réinjecté comme « dossier »
+  relance l'échec indéfiniment).
+- **Planification** : un passage par minute ; un passage sans dépôt dure
+  moins de 100 ms.
+
+## Tests réalisés
 
 | Scénario                                             | Résultat                                  |
 |------------------------------------------------------|-------------------------------------------|
@@ -92,6 +119,9 @@ garantissent qu'un seul dossier devient complet.
 | Relance complète d'un dossier terminé                 | 8 étapes sautées, 0 e-mail                |
 | 300 PDF abîmés au hasard                              | Tous lus ou déclarés illisibles, 0 plantage |
 | Référence `../../etc`                                 | Refusée (404)                             |
+| Flux n8n, 70 dossiers (35 % d'erreurs volontaires)    | 70/70 décisions conformes, 0 doublon      |
+| Flux n8n, serveur mail coupé puis rétabli             | Reprise à l'étape 7, 0 e-mail en double   |
+| Campagne : 120 dossiers, 5 pannes provoquées          | 120/120 terminés et conformes, 11 échecs absorbés, 0 doublon |
 
 ## Les deux mécanismes centraux
 

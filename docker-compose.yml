@@ -100,6 +100,8 @@ services:
       DROITS_INSCRIPTION_AR: ${DROITS_INSCRIPTION_AR:-150000}
       SMTP_HOTE: mailpit
       SMTP_PORT: 1025
+      # Délai au-delà duquel une exécution sans nouvelles est considérée morte
+      DUREE_VERROU_MINUTES: ${DUREE_VERROU_MINUTES:-15}
       TZ: ${TZ}
     volumes:
       - ./data:/data
@@ -118,8 +120,13 @@ services:
     container_name: ap-mailpit
     restart: unless-stopped
     environment:
-      MP_MAX_MESSAGES: 5000
+      MP_MAX_MESSAGES: 20000
+      # Messages conservés sur disque : un arrêt de Mailpit (panne simulée)
+      # ne doit pas effacer les preuves d'envoi utilisées pour compter les doublons.
+      MP_DATABASE: /data/mailpit.db
       TZ: ${TZ}
+    volumes:
+      - mailpit_donnees:/data
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT}:8025"
     networks: [reseau_interne]
@@ -157,6 +164,7 @@ services:
 volumes:
   pg_donnees:
   n8n_donnees:
+  mailpit_donnees:
   grafana_donnees:
 
 networks:

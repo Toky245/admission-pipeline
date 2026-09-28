@@ -99,10 +99,27 @@ def photo_png(graine: int, largeur: int = 60, hauteur: int = 80) -> bytes:
             + bloc(b"IEND", b""))
 
 
-def nouveau_candidat(rng: random.Random) -> dict:
-    nom = rng.choice(NOMS)
-    prenoms = rng.choice(PRENOMS)
-    naissance = date(2005, 1, 1) + timedelta(days=rng.randrange(0, 4 * 365))
+def cle_identite(nom: str, prenoms: str, naissance: date) -> str:
+    """Même normalisation que inscription.cle_identite() en base."""
+    norm = lambda t: " ".join(sans_accents(t).lower().split())
+    return f"{norm(nom)}|{norm(prenoms)}|{naissance.isoformat()}"
+
+
+def nouveau_candidat(rng: random.Random, deja_pris: set[str]) -> dict:
+    """Candidat inédit : son identité n'a jamais été générée auparavant.
+
+    Sans cette garantie, deux candidats « normaux » pourraient avoir le même
+    nom, les mêmes prénoms et la même date de naissance ; le second serait
+    alors rejeté à juste titre comme déjà inscrit, et faussera les mesures.
+    """
+    while True:
+        nom = rng.choice(NOMS)
+        prenoms = rng.choice(PRENOMS)
+        naissance = date(2004, 1, 1) + timedelta(days=rng.randrange(0, 5 * 365))
+        cle = cle_identite(nom, prenoms, naissance)
+        if cle not in deja_pris:
+            deja_pris.add(cle)
+            break
     moyenne = round(rng.uniform(10, 18), 2)
     identifiant = sans_accents(prenoms.split()[0]).lower()
     return {
@@ -156,12 +173,13 @@ def pieces(c: dict, recu: dict, variante_formulaire: dict | None = None) -> dict
     }
 
 
-def deposer(dossier: Path, fichiers: dict[str, bytes]) -> None:
+def deposer(dossier: Path, fichiers: dict[str, bytes], marqueur: bool = True) -> None:
     dossier.mkdir(parents=True, exist_ok=False)
     for nom, contenu in fichiers.items():
         ecrire_atomique(dossier / nom, contenu)
     # Marqueur écrit en dernier : le dépôt est complet et peut être traité.
-    ecrire_atomique(dossier / ".pret", b"")
+    if marqueur:
+        ecrire_atomique(dossier / ".pret", b"")
 
 
 def main() -> None:
@@ -171,10 +189,16 @@ def main() -> None:
     p.add_argument("--taux-erreurs", type=float, default=0.35, help="part de dossiers avec un scénario (défaut : 0.35)")
     p.add_argument("--sans-erreur", action="store_true", help="aucun scénario d'erreur")
     p.add_argument("--sortie", type=Path, default=RACINE / "data" / "entree")
+    p.add_argument("--lot", default=None, help="nom du lot, repris dans les références (défaut : horodatage)")
+    p.add_argument("--sans-marqueur", action="store_true",
+                   help="ne pas écrire .pret (pour simuler un dépôt encore en cours de copie)")
     args = p.parse_args()
 
     rng = random.Random(args.graine)
-    lot = datetime.now().strftime("%Y%m%d-%H%M%S")
+    lot = args.lot or datetime.now().strftime("%Y%m%d-%H%M%S")
+    prefixe_recu = f"{zlib.crc32(lot.encode()) % 1_000_000:06d}"
+    registre = args.sortie.resolve().parent / "identites_generees.txt"
+    deja_pris = set(registre.read_text(encoding="utf-8").split("\n")) if registre.exists() else set()
     args.sortie.mkdir(parents=True, exist_ok=True)
     verite = args.sortie.resolve().parent / "verite_terrain.csv"
     nouveau_fichier = not verite.exists()
@@ -192,9 +216,10 @@ def main() -> None:
 
         for i in range(1, args.nombre + 1):
             reference = f"DEP-{lot}-{i:04d}"
-            candidat = nouveau_candidat(rng)
+            candidat = nouveau_candidat(rng, deja_pris)
             recu = {
-                "numero": f"REC-{lot[2:8]}-{rng.randrange(100000, 999999)}",
+                # Unique par construction : lot + rang dans le lot
+                "numero": f"REC-{prefixe_recu}-{i:05d}",
                 "montant": DROITS_AR,
                 "date": date(2026, 9, 1) + timedelta(days=rng.randrange(0, 25)),
             }
@@ -246,12 +271,13 @@ def main() -> None:
                 fichiers = pieces(candidat, recu)
                 groupe, detail = ref_orig, "même candidat, nouveau reçu"
 
-            deposer(args.sortie / reference, fichiers)
+            deposer(args.sortie / reference, fichiers, marqueur=not args.sans_marqueur)
             if scenario in ("normal", "variation_ecriture"):
                 deja_emis.append((reference, candidat, recu))
             ecrivain.writerow([reference, scenario, attendu, groupe, detail])
             stats[scenario] = stats.get(scenario, 0) + 1
 
+    registre.write_text("\n".join(sorted(deja_pris)), encoding="utf-8")
     print(f"{args.nombre} dossiers générés dans {args.sortie}")
     for nom, nb in sorted(stats.items(), key=lambda x: -x[1]):
         print(f"  {nom:<20} {nb}")

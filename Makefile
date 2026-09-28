@@ -6,7 +6,7 @@ GRAFANA_PORT ?= 3000
 N ?= 30
 
 .PHONY: aide demarrer demarrer-tout arreter etat journaux psql doublons tester migrer \
-        generer simuler verifier tableau reinitialiser
+        generer simuler verifier tableau vider campagne reinitialiser
 
 aide:            ## Affiche cette aide
 	@grep -hE '^[a-z-]+:.*##' Makefile | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -60,7 +60,16 @@ tableau:         ## Lance Grafana et affiche l'adresse du tableau de bord
 	docker compose --profile tableau up -d grafana
 	@echo "Tableau de bord : http://localhost:$(GRAFANA_PORT)  (identifiants dans .env)"
 
-reinitialiser:   ## ATTENTION : efface base, dossiers traités et e-mails, puis relance
+vider:           ## Efface dossiers, exécutions et e-mails du projet (n8n conservé)
+	docker compose exec -T postgres sh -c 'psql -q -U $$POSTGRES_USER -d $$POSTGRES_DB' < db/outils/vider.sql
+	find data -mindepth 2 ! -name .gitkeep -delete 2>/dev/null; rm -f data/verite_terrain.csv data/identites_generees.txt
+	-curl -s -X DELETE http://localhost:$(MAILPIT_UI_PORT)/api/v1/messages > /dev/null && echo "E-mails de Mailpit supprimés."
+
+campagne:        ## Campagne de pannes chiffrée (ex. make campagne N_CAMPAGNE=300)
+	python3 scripts/campagne_pannes.py -n $(or $(N_CAMPAGNE),300) --url http://localhost:$(EXTRACTEUR_PORT) \
+	  --mailpit http://localhost:$(MAILPIT_UI_PORT)
+
+reinitialiser:   ## ATTENTION : efface TOUT, y compris n8n (compte et flux), puis relance
 	docker compose --profile tableau down -v
 	find data -mindepth 2 ! -name .gitkeep -delete 2>/dev/null; rm -f data/verite_terrain.csv
 	$(MAKE) demarrer
