@@ -1,0 +1,486 @@
+{
+  "name": "Traitement des dossiers d'inscription",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        -720
+      ],
+      "id": "21c4056f-c840-4a5e-b75b-9d2f8262b525",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "http://extracteur:8000/depots",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1200,
+        -720
+      ],
+      "id": "cf090eb7-f4a4-46cd-b5dc-f69a88d8609d",
+      "name": "Lister les dépôts"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://extracteur:8000/executions",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reference",
+              "value": "={{ $json.reference }}"
+            },
+            {
+              "name": "workflow",
+              "value": "n8n_traitement"
+            },
+            {
+              "name": "n8n_execution_id",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -512,
+        -1312
+      ],
+      "id": "973bebc1-d498-4e85-8f2c-80008c088e23",
+      "name": "Ouvrir exécution"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=    http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/reception",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        -800
+      ],
+      "id": "0bb8646f-ea39-450e-abe5-2221aa3307a7",
+      "name": "1 - Réception"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "depots",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -720
+      ],
+      "id": "dbe5600e-e054-40f4-a76e-9f2d07cafe4b",
+      "name": "Un item par dépôt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/extraction",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -80,
+        -800
+      ],
+      "id": "02334158-818d-4ed0-a105-1a6a7ab54b0d",
+      "name": "2 - Extraction"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/controle",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        144,
+        -800
+      ],
+      "id": "5e608fb0-c9c4-4e4e-a2ba-0b7936a35643",
+      "name": "3 - Contrôle"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/enregistrement",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        368,
+        -800
+      ],
+      "id": "b5ca1048-cf86-4108-8d7d-2c25e91eba2b",
+      "name": "4 - Enregistrement"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/matricule",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        592,
+        -800
+      ],
+      "id": "ad6f5918-3894-43d4-a3dc-e2b82bea3391",
+      "name": "5 - Matricule"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/accuse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        816,
+        -800
+      ],
+      "id": "deee0879-5e41-45bf-b4ba-f508bb18c671",
+      "name": "6 - Accusé"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/notification",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1040,
+        -800
+      ],
+      "id": "1bf459b6-7c45-488d-9ba6-852ac54316d9",
+      "name": "7 - Notification"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/dossiers/{{ $('Ouvrir exécution').item.json.reference }}/etapes/archivage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "execution_id",
+              "value": "={{ $('Ouvrir exécution').item.json.execution_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1264,
+        -800
+      ],
+      "id": "31062e8d-9cf1-461b-8363-40666e1577f2",
+      "name": "8 - Archivage"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://extracteur:8000/executions/{{ $('Ouvrir exécution').item.json.execution_id }}/terminer",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "statut",
+              "value": "=reussie"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -272,
+        -480
+      ],
+      "id": "94bc114a-cdd3-4483-a033-9246c7bf3cb7",
+      "name": "Clore (réussie)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -752,
+        -1024
+      ],
+      "id": "96171d91-b4cd-40a4-8d51-d10144ee47f3",
+      "name": "Chaque dossier"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Lister les dépôts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lister les dépôts": {
+      "main": [
+        [
+          {
+            "node": "Un item par dépôt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ouvrir exécution": {
+      "main": [
+        [
+          {
+            "node": "1 - Réception",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un item par dépôt": {
+      "main": [
+        [
+          {
+            "node": "Chaque dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1 - Réception": {
+      "main": [
+        [
+          {
+            "node": "2 - Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2 - Extraction": {
+      "main": [
+        [
+          {
+            "node": "3 - Contrôle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3 - Contrôle": {
+      "main": [
+        [
+          {
+            "node": "4 - Enregistrement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4 - Enregistrement": {
+      "main": [
+        [
+          {
+            "node": "5 - Matricule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5 - Matricule": {
+      "main": [
+        [
+          {
+            "node": "6 - Accusé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6 - Accusé": {
+      "main": [
+        [
+          {
+            "node": "7 - Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7 - Notification": {
+      "main": [
+        [
+          {
+            "node": "8 - Archivage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8 - Archivage": {
+      "main": [
+        [
+          {
+            "node": "Clore (réussie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chaque dossier": {
+      "main": [
+        [
+          {
+            "node": "Ouvrir exécution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ouvrir exécution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chaque dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clore (réussie)": {
+      "main": [
+        [
+          {
+            "node": "Chaque dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8543152e-b4b5-405b-b3c1-a5fa33acc2a4",
+  "meta": {
+    "instanceId": "27f437226535325a0bf3453c109fc3f1e83ceaf24c288bf49fc4787f3aa6937b"
+  },
+  "nodeGroups": [],
+  "id": "6AjofOlYfhAXE6tT",
+  "tags": []
+}
