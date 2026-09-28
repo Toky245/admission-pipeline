@@ -365,11 +365,31 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        656,
-        -912
+        -144,
+        -1040
       ],
       "id": "374400fd-7cc3-4553-a5ad-906c55ac37ee",
       "name": "Dossier non ouvert"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        880,
+        -912
+      ],
+      "id": "564d64db-1d1f-4173-9925-767d40ab893a",
+      "name": "Chaque minute"
     }
   ],
   "pinData": {},
@@ -613,14 +633,25 @@
           }
         ]
       ]
+    },
+    "Chaque minute": {
+      "main": [
+        [
+          {
+            "node": "Lister les dépôts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ceb1e09c-e55c-4887-9e47-b9136d901607",
+  "versionId": "887d1ea4-a5d5-4ae1-bf99-f78484b8b1ff",
   "meta": {
     "instanceId": "27f437226535325a0bf3453c109fc3f1e83ceaf24c288bf49fc4787f3aa6937b"
   },
