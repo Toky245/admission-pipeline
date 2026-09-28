@@ -126,7 +126,7 @@ services:
     <<: *journalisation
 
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana:${GRAFANA_VERSION:-11.4.0}
     container_name: ap-grafana
     restart: unless-stopped
     profiles: [tableau]
@@ -138,6 +138,10 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Le tableau de bord du projet s'ouvre directement après connexion
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/suivi-admissions.json
       POSTGRES_DB: ${POSTGRES_DB}
       GRAFANA_DB_USER: ${GRAFANA_DB_USER}
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}

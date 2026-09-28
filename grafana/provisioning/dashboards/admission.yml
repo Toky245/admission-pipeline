@@ -1,0 +1,12 @@
+apiVersion: 1
+
+# Charge automatiquement les tableaux de bord du dossier json/ au démarrage.
+providers:
+  - name: admission
+    folder: Admission
+    type: file
+    disableDeletion: true
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

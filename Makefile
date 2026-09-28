@@ -2,10 +2,11 @@
 -include .env
 EXTRACTEUR_PORT ?= 8000
 MAILPIT_UI_PORT ?= 8025
+GRAFANA_PORT ?= 3000
 N ?= 30
 
 .PHONY: aide demarrer demarrer-tout arreter etat journaux psql doublons tester migrer \
-        generer simuler verifier reinitialiser
+        generer simuler verifier tableau reinitialiser
 
 aide:            ## Affiche cette aide
 	@grep -hE '^[a-z-]+:.*##' Makefile | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -54,6 +55,10 @@ simuler:         ## Traite les dépôts SANS n8n (référence pour le flux n8n)
 verifier:        ## Compare les décisions avec les résultats attendus
 	python3 scripts/verifier_resultats.py --url http://localhost:$(EXTRACTEUR_PORT) \
 	  --mailpit http://localhost:$(MAILPIT_UI_PORT)
+
+tableau:         ## Lance Grafana et affiche l'adresse du tableau de bord
+	docker compose --profile tableau up -d grafana
+	@echo "Tableau de bord : http://localhost:$(GRAFANA_PORT)  (identifiants dans .env)"
 
 reinitialiser:   ## ATTENTION : efface base, dossiers traités et e-mails, puis relance
 	docker compose --profile tableau down -v

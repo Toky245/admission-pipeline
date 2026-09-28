@@ -79,6 +79,30 @@ pièces, reçu réutilisé par un autre candidat, candidat qui redépose un
 second dossier, et variations d'écriture (casse, accents, espaces) qui ne
 doivent **pas** provoquer de rejet.
 
+## Tableau de bord
+
+```bash
+make tableau          # lance Grafana : http://localhost:3000
+```
+
+Le tableau de bord « Suivi des dossiers d'inscription » est installé
+automatiquement et s'ouvre dès la connexion. Il se rafraîchit toutes les
+30 secondes :
+
+| Zone | Ce qu'elle montre |
+|------|-------------------|
+| Indicateurs | dossiers reçus, taux de complets, exécutions réussies du premier coup, dossiers terminés, dossiers en attente de reprise, doublons |
+| Activité | exécutions réussies / échouées / interrompues dans le temps, répartition des décisions |
+| Causes | pièces les plus souvent manquantes, motifs de rejet, échecs techniques par étape |
+| Détail | durée et reprises de chaque étape, derniers échecs, dossiers en attente |
+
+La lecture clé pour la fiabilité : pendant une panne, « Exécutions réussies
+du premier coup » baisse, mais « Dossiers terminés » revient à 100 % et
+« Doublons détectés » reste à 0.
+
+Grafana lit la base avec un compte **en lecture seule**. Les indicateurs
+reposent sur des vues SQL (`db/migrations/002_vues_tableau_de_bord.sql`).
+
 ## API du service
 
 | Méthode | Route                                    | Rôle                                   |
@@ -102,7 +126,7 @@ db/
 services/
   extracteur/  service Python d'extraction des pièces
 n8n/workflows/ flux n8n exportés en JSON
-grafana/       configuration du tableau de bord
+grafana/       source de données et tableau de bord (installés automatiquement)
 scripts/       générateur, simulateur de flux, vérification des résultats
 db/migrations/ évolutions du schéma, rejouables (make migrer)
 data/          entree, archives, en_attente, rejets, accuses (non versionnés)
@@ -113,10 +137,10 @@ docs/          architecture et décisions techniques
 
 - [x] Phase 1 : socle Docker, schéma de base, tests d'idempotence
 - [x] Phase 2 : générateur de faux dossiers, 8 étapes idempotentes, simulateur
-- [ ] Phase 2 bis : flux n8n équivalent au simulateur
-- [ ] Phase 3 : idempotence et reprise branchées dans n8n
-- [ ] Phase 4 : relances, flux d'erreur, alertes
-- [ ] Phase 5 : tableau de bord Grafana
+- [x] Phase 2 bis : flux n8n équivalent au simulateur (70/70 décisions conformes)
+- [x] Phase 3 : reprise partielle et idempotence dans n8n, validées par une panne SMTP réelle
+- [x] Phase 4 : relances automatiques, sorties d'erreur, planification chaque minute
+- [x] Phase 5 : tableau de bord Grafana
 - [ ] Phase 6 : campagne de pannes et mesures
 - [ ] Phase 7 : démonstration vidéo
 
